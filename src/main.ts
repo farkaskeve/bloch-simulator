@@ -3,9 +3,10 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import {
-  State, Gate, Vec3, C, FIXED, parametric, apply, bloch, rotate, angles,
-  fromAngles, fidelity, abs2, fmtAngle,
+  State, Gate, Vec3, FIXED, parametric, apply, bloch, rotate, angles,
+  fromAngles, abs2, fmtAngle,
 } from "./quantum";
+import { formatKet } from "./format";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const ACCENT = 0xff6a1f;
@@ -115,8 +116,6 @@ label("|0⟩", [0, 0, 1.3]);
 label("|1⟩", [0, 0, -1.3]);
 label("|+⟩", [1.3, 0, 0]);
 label("|−⟩", [-1.3, 0, 0]);
-label("|+i⟩", [0, 1.32, 0]);
-label("|−i⟩", [0, -1.32, 0]);
 
 // State arrows: a soft, lit stick with a round bead on the tip
 function makeArrow(color: number, opacity: number, radius: number, bead: number) {
@@ -264,34 +263,19 @@ function resize() {
 addEventListener("resize", resize);
 
 // ================================================================ UI
-const fmtC = ({ re, im }: C) => {
-  const r = Math.abs(re) < 5e-4 ? 0 : re, i = Math.abs(im) < 5e-4 ? 0 : im;
-  const n = (x: number) => Math.abs(x).toFixed(3).replace(/\.?0+$/, "") || "0";
-  if (!i) return `${r < 0 ? "−" : ""}${n(r)}`;
-  if (!r) return `${i < 0 ? "−" : ""}${Math.abs(Math.abs(i) - 1) < 5e-4 ? "" : n(i)}i`;
-  return `(${r < 0 ? "−" : ""}${n(r)}${i < 0 ? "−" : "+"}${n(i)}i)`;
-};
-/** Amplitude β written as "+ β" or "− |β|" so the ket reads naturally. */
-function fmtTerm(z: C) {
-  const r = Math.abs(z.re) < 5e-4 ? 0 : z.re, i = Math.abs(z.im) < 5e-4 ? 0 : z.im;
-  const neg = (r < 0 && !i) || (!r && i < 0);
-  return neg ? ` − <b>${fmtC({ re: -r, im: -i })}</b>` : ` + <b>${fmtC(z)}</b>`;
-}
-const fix2 = (x: number) => (Math.abs(x) < 5e-3 ? 0 : x).toFixed(2);
-const deg = (r: number) => `${((r * 180) / Math.PI).toFixed(0)}°`;
+const SUB = "₀₁₂₃₄₅₆₇₈₉";
+const sub = (k: number) => String(k).replace(/\d/g, (d) => SUB[+d]);
 
 /** Readout shows the state the arrow currently rests on. */
 function render() {
   const s = states[shown];
   const [a, b] = s;
-  const { theta, phi } = angles(s);
-  const [x, y, z] = bloch(s);
-  $("ket").innerHTML = `|ψ⟩ = <b>${fmtC(a)}</b>|0⟩${fmtTerm(b)}|1⟩`;
+  const { alpha, beta } = angles(s);
+  const ket = `|φ${sub(shown)}⟩`;
+  $("ket").innerHTML = `${ket} = ${formatKet(s)}`;
   $("meta").innerHTML =
-    `<span>θ ${deg(theta)}</span><span>φ ${deg(phi)}</span>` +
-    `<span>r (${fix2(x)}, ${fix2(y)}, ${fix2(z)})</span><br>` +
-    `<span>P(0) ${abs2(a).toFixed(3)}</span><span>P(1) ${abs2(b).toFixed(3)}</span>` +
-    `<span class="f">F(ψ₀, ψ) ${fidelity(psi0, s).toFixed(3)}</span>`;
+    `<span>α = ${fmtAngle(alpha)}</span><span>β = ${fmtAngle(beta)}</span><br>` +
+    `<span>P(0 | ${ket}) = ${abs2(a).toFixed(3)}</span><span>P(1 | ${ket}) = ${abs2(b).toFixed(3)}</span>`;
   syncChips();
 }
 
@@ -300,14 +284,13 @@ const box = $("circuit");
 let chips: HTMLButtonElement[] = [];
 
 function buildChips(animateLast = false) {
-  box.innerHTML = `<span class="start">|ψ₀⟩ →</span>`;
-  if (!circuit.length) box.insertAdjacentHTML("beforeend", `<span class="empty">tap a gate to begin</span>`);
+  box.innerHTML = `<span class="start">|φ₀⟩ →</span>`;
   chips = circuit.map((g, i) => {
     const chip = document.createElement("button");
     chip.className = "chip";
     if (!animateLast || i < circuit.length - 1) chip.style.animation = "none";
     chip.textContent = g.name;
-    chip.title = "Click to remove";
+    chip.title = "Törlés";
     chip.onclick = () => { circuit.splice(i, 1); recompute(); buildChips(); settle(); };
     box.appendChild(chip);
     return chip;
@@ -331,9 +314,10 @@ function addGate(g: Gate) {
 
 // Gate buttons
 const TIPS: Record<string, string> = {
-  X: "Pauli-X — π about x (bit flip)", Y: "Pauli-Y — π about y", Z: "Pauli-Z — π about z (phase flip)",
-  H: "Hadamard — π about (x+z)/√2", S: "Phase S — π/2 about z", T: "T — π/4 about z",
-  Rx: "Rotate θ about x", Ry: "Rotate θ about y", Rz: "Rotate θ about z", P: "Phase shift P(θ)",
+  X: "Pauli-X kapu", Y: "Pauli-Y kapu", Z: "Pauli-Z kapu", H: "Hadamard-kapu",
+  S: "S fáziskapu = P(0.5π)", T: "T fáziskapu = P(0.25π)",
+  Rx: "Rx(α) forgatási kapu (x tengely körül)", Ry: "Ry(α) forgatási kapu (y tengely körül)",
+  Rz: "Rz(α) forgatási kapu (z tengely körül)", P: "Fázisforgató kapu P(α)",
 };
 for (const k of Object.keys(FIXED)) {
   const btn = document.createElement("button");
@@ -344,13 +328,13 @@ for (const k of Object.keys(FIXED)) {
   $("fixed").appendChild(btn);
 }
 const angleInput = $<HTMLInputElement>("angle");
-const angleValue = () => (Number(angleInput.value) * Math.PI) / 12;
+const angleValue = () => (Number(angleInput.value) * Math.PI) / 8;
 const syncAngle = () => ($("angleOut").textContent = fmtAngle(angleValue()));
 angleInput.oninput = syncAngle;
 for (const k of ["Rx", "Ry", "Rz", "P"] as const) {
   const btn = document.createElement("button");
   btn.className = "gate";
-  btn.innerHTML = k.length > 1 ? `R<sub style="font-size:.7em">${k[1]}</sub>` : k;
+  btn.innerHTML = k.length > 1 ? `R<sub>${k[1]}</sub>` : k;
   btn.title = TIPS[k];
   btn.onclick = () => addGate(parametric(k, angleValue()));
   $("param").appendChild(btn);
@@ -370,7 +354,7 @@ $("clear").onclick = () => { circuit = []; recompute(); buildChips(); settle(); 
 
 // Initial state popover
 const pop = $("popover");
-const thetaIn = $<HTMLInputElement>("theta"), phiIn = $<HTMLInputElement>("phi");
+const alphaIn = $<HTMLInputElement>("alpha"), betaIn = $<HTMLInputElement>("beta");
 const initBtn = $("initBtn");
 const setPop = (open: boolean) => {
   pop.hidden = !open;
@@ -382,20 +366,22 @@ addEventListener("pointerdown", (e) => {
   if (!pop.hidden && !pop.contains(t) && !initBtn.contains(t)) setPop(false);
 });
 
-function setInitial(thetaDeg: number, phiDeg: number) {
-  thetaIn.value = String(thetaDeg);
-  phiIn.value = String(phiDeg);
-  $("thetaOut").textContent = `${thetaDeg}°`;
-  $("phiOut").textContent = `${phiDeg}°`;
-  psi0 = fromAngles((thetaDeg * Math.PI) / 180, (phiDeg * Math.PI) / 180);
+/** α, β in steps of 0.01π (slider units). */
+function setInitial(alphaSteps: number, betaSteps: number) {
+  const alpha = (alphaSteps * Math.PI) / 100, beta = (betaSteps * Math.PI) / 100;
+  alphaIn.value = String(alphaSteps);
+  betaIn.value = String(betaSteps);
+  $("alphaOut").textContent = fmtAngle(alpha);
+  $("betaOut").textContent = fmtAngle(beta);
+  psi0 = fromAngles(alpha, beta);
   setGhost(bloch(psi0));
   recompute();
   settle();
 }
-thetaIn.oninput = phiIn.oninput = () => setInitial(Number(thetaIn.value), Number(phiIn.value));
+alphaIn.oninput = betaIn.oninput = () => setInitial(Number(alphaIn.value), Number(betaIn.value));
 
 const PRESETS: [string, number, number][] = [
-  ["0", 0, 0], ["1", 180, 0], ["+", 90, 0], ["−", 90, 180], ["+i", 90, 90], ["−i", 90, 270],
+  ["0", 0, 0], ["1", 100, 0], ["+", 50, 0], ["−", 50, 100],
 ];
 for (const [name, t, p] of PRESETS) {
   const btn = document.createElement("button");

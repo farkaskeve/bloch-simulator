@@ -1,11 +1,11 @@
 {
   "name": "bloch-sphere-simulator",
   "version": "1.0.0",
-  "description": "Interactive single-qubit Bloch sphere simulator",
+  "description": "Interaktív Bloch-gömb szimulátor",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "test": "tsx tests/verify.ts"
+    "test": "tsx tests/verify.ts && tsx tests/readout.ts"
   },
   "author": "",
   "license": "MIT",

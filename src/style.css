@@ -65,6 +65,44 @@ svg {
   letter-spacing: -0.01em;
 }
 
+.ket {
+  line-height: 2.4;
+  white-space: nowrap;
+}
+
+/* stacked fraction, e.g. 1/√2 */
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 0.8em;
+  line-height: 1.15;
+  margin: 0 0.12em;
+}
+
+.frac > span:first-child {
+  border-bottom: 2px solid currentColor;
+  padding: 0 0.2em 0.08em;
+}
+
+.frac > span:last-child {
+  padding-top: 0.08em;
+}
+
+/* the radicand under the √ bar */
+.rad {
+  border-top: 1.5px solid currentColor;
+  padding: 0 0.05em;
+}
+
+.ket sup {
+  font-size: 0.6em;
+  vertical-align: 0.9em;
+  line-height: 0;
+}
+
 .meta {
   margin-top: 6px;
   font-size: 14px;
@@ -214,7 +252,7 @@ button:focus-visible {
 
 .presets {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   margin-bottom: 8px;
 }
@@ -234,7 +272,7 @@ button:focus-visible {
 
 .popover label {
   display: grid;
-  grid-template-columns: 16px 1fr 44px;
+  grid-template-columns: 16px 1fr 56px;
   align-items: center;
   gap: 10px;
   height: 36px;
@@ -317,7 +355,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .angle output {
-  min-width: 42px;
+  min-width: 56px;
 }
 
 .circuit {

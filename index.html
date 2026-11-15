@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="hu">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bloch Sphere Simulator</title>
+  <title>Bloch-gömb szimulátor</title>
 </head>
 
 <body>
@@ -17,26 +17,25 @@
   </section>
 
   <!-- Initial state: drops down from the top-centre button -->
-  <button class="round init-btn" id="initBtn" title="Set the initial state |ψ₀⟩">
-    <span>|ψ₀⟩</span>
+  <button class="round init-btn" id="initBtn" title="Kezdőállapot |φ₀⟩">
+    <span>|φ₀⟩</span>
     <svg viewBox="0 0 24 24" width="18" height="18">
       <path d="M6 9l6 6 6-6" />
     </svg>
   </button>
   <div class="popover" id="popover" hidden>
     <div class="presets" id="presets"></div>
-    <label>θ <input type="range" id="theta" min="0" max="180" step="1" value="0" /><output
-        id="thetaOut"></output></label>
-    <label>φ <input type="range" id="phi" min="0" max="360" step="1" value="0" /><output id="phiOut"></output></label>
+    <label>α <input type="range" id="alpha" min="0" max="100" step="1" value="0" /><output id="alphaOut"></output></label>
+    <label>β <input type="range" id="beta" min="0" max="199" step="1" value="0" /><output id="betaOut"></output></label>
   </div>
 
   <!-- Corner actions -->
-  <button class="corner left" id="clear" title="Clear circuit">
+  <button class="corner left" id="clear" title="Áramkör törlése">
     <svg viewBox="0 0 24 24" width="26" height="26">
       <path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4" />
     </svg>
   </button>
-  <button class="corner right" id="play" title="Replay circuit (Space)">
+  <button class="corner right" id="play" title="Újrajátszás (szóköz)">
     <svg viewBox="0 0 24 24" width="26" height="26">
       <path d="M8 5.5v13l10.5-6.5z" />
     </svg>
@@ -49,8 +48,8 @@
       <div class="group" id="fixed"></div>
       <div class="group" id="param"></div>
     </div>
-    <label class="angle" title="Angle for Rx, Ry, Rz, P">
-      <input type="range" id="angle" min="1" max="24" step="1" value="6" />
+    <label class="angle" title="α szög: Rx(α), Ry(α), Rz(α), P(α)">
+      <input type="range" id="angle" min="1" max="16" step="1" value="4" />
       <output id="angleOut"></output>
     </label>
   </footer>

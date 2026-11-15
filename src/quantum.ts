@@ -1,7 +1,7 @@
 // Pure single-qubit quantum mechanics. No rendering code here.
 
 export type C = { re: number; im: number };
-export type State = [C, C]; // α|0⟩ + β|1⟩
+export type State = [C, C]; // a|0⟩ + b|1⟩
 export type Mat = [[C, C], [C, C]];
 export type Vec3 = [number, number, number];
 
@@ -12,10 +12,10 @@ export const conj = (a: C): C => c(a.re, -a.im);
 export const abs2 = (a: C): number => a.re * a.re + a.im * a.im;
 export const expi = (t: number): C => c(Math.cos(t), Math.sin(t));
 
-/** |ψ⟩ = cos(θ/2)|0⟩ + e^{iφ} sin(θ/2)|1⟩ */
-export function fromAngles(theta: number, phi: number): State {
-  const s = Math.sin(theta / 2);
-  return [c(Math.cos(theta / 2)), c(s * Math.cos(phi), s * Math.sin(phi))];
+/** |φ⟩ = cos(α/2)|0⟩ + e^{jβ} sin(α/2)|1⟩ */
+export function fromAngles(alpha: number, beta: number): State {
+  const s = Math.sin(alpha / 2);
+  return [c(Math.cos(alpha / 2)), c(s * Math.cos(beta), s * Math.sin(beta))];
 }
 
 export function normalize([a, b]: State): State {
@@ -33,14 +33,14 @@ export function bloch([a, b]: State): Vec3 {
   return [2 * ab.re, 2 * ab.im, abs2(a) - abs2(b)];
 }
 
-/** Polar angle θ ∈ [0, π] and azimuth φ ∈ [0, 2π) of the Bloch vector */
-export function angles(s: State): { theta: number; phi: number } {
+/** α ∈ [0, π] and β ∈ [0, 2π) of cos(α/2)|0⟩ + e^{jβ} sin(α/2)|1⟩ (up to global phase) */
+export function angles(s: State): { alpha: number; beta: number } {
   const [x, y, z] = bloch(s);
-  const theta = Math.acos(Math.max(-1, Math.min(1, z)));
-  let phi = Math.atan2(y, x);
-  if (phi < 0) phi += 2 * Math.PI;
-  if (Math.sin(theta) < 1e-9) phi = 0;
-  return { theta, phi };
+  const alpha = Math.acos(Math.max(-1, Math.min(1, z)));
+  let beta = Math.atan2(y, x);
+  if (beta < 0) beta += 2 * Math.PI;
+  if (Math.sin(alpha) < 1e-9) beta = 0;
+  return { alpha, beta };
 }
 
 /** Fidelity F = |⟨a|b⟩|² */
@@ -61,9 +61,11 @@ export function rotate(v: Vec3, n: Vec3, t: number): Vec3 {
 }
 
 // ---------------------------------------------------------------- Gates
+// Basic gates (Pauli-X/Y/Z, Hadamard), phase gates (S, T, P(α)) and rotation gates
+// Rx(α), Ry(α), Rz(α). Phase gate: P(α) = [[1, 0], [0, e^{jα}]].
 
 export interface Gate {
-  name: string; // label shown on the chip, e.g. "Rx(π/2)"
+  name: string; // label shown on the chip, e.g. "P(0.5π)"
   matrix: Mat; // the exact textbook matrix
   axis: Vec3; // rotation axis on the Bloch sphere
   angle: number; // rotation angle on the Bloch sphere
@@ -72,14 +74,7 @@ export interface Gate {
 const R2 = Math.SQRT1_2;
 const X: Vec3 = [1, 0, 0], Y: Vec3 = [0, 1, 0], Z: Vec3 = [0, 0, 1];
 
-const phaseGate = (name: string, p: number): Gate => ({
-  name,
-  matrix: [[c(1), c(0)], [c(0), expi(p)]],
-  axis: Z,
-  angle: p,
-});
-
-/** R_n(θ) = cos(θ/2) I − i sin(θ/2) (n·σ) */
+/** R_n(α) = cos(α/2) I − j sin(α/2) (n·σ) */
 function rot(name: string, n: Vec3, t: number): Gate {
   const co = Math.cos(t / 2), s = Math.sin(t / 2);
   const [nx, ny, nz] = n;
@@ -94,6 +89,9 @@ function rot(name: string, n: Vec3, t: number): Gate {
   };
 }
 
+const phaseGate = (name: string, alpha: number): Gate =>
+  ({ name, matrix: [[c(1), c(0)], [c(0), expi(alpha)]], axis: Z, angle: alpha });
+
 export const FIXED: Record<string, Gate> = {
   X: { name: "X", matrix: [[c(0), c(1)], [c(1), c(0)]], axis: X, angle: Math.PI },
   Y: { name: "Y", matrix: [[c(0), c(0, -1)], [c(0, 1), c(0)]], axis: Y, angle: Math.PI },
@@ -103,25 +101,23 @@ export const FIXED: Record<string, Gate> = {
   T: phaseGate("T", Math.PI / 4),
 };
 
-export function parametric(kind: "Rx" | "Ry" | "Rz" | "P", t: number): Gate {
-  const label = `${kind}(${fmtAngle(t)})`;
-  if (kind === "Rx") return rot(label, X, t);
-  if (kind === "Ry") return rot(label, Y, t);
-  if (kind === "Rz") return rot(label, Z, t);
-  return phaseGate(label, t);
+export type ParamKind = "Rx" | "Ry" | "Rz" | "P";
+
+/** Parametric gates: rotations Rx(α), Ry(α), Rz(α) and the phase gate P(α). */
+export function parametric(kind: ParamKind, alpha: number): Gate {
+  const name = `${kind}(${fmtAngle(alpha)})`;
+  if (kind === "Rx") return rot(name, X, alpha);
+  if (kind === "Ry") return rot(name, Y, alpha);
+  if (kind === "Rz") return rot(name, Z, alpha);
+  return phaseGate(name, alpha);
 }
 
-/** Pretty-prints an angle as a multiple of π when possible. */
+export const phase = (alpha: number) => parametric("P", alpha);
+
+/** Angle as a decimal multiple of π */
 export function fmtAngle(t: number): string {
-  const k = t / Math.PI;
-  for (const d of [1, 2, 3, 4, 6, 8, 12]) {
-    const n = Math.round(k * d);
-    if (Math.abs(k * d - n) < 1e-6) {
-      if (n === 0) return "0";
-      const num = n === 1 ? "π" : n === -1 ? "−π" : `${n < 0 ? "−" : ""}${Math.abs(n)}π`;
-      return d === 1 ? num : `${num}/${d}`;
-    }
-  }
-  return `${((t * 180) / Math.PI).toFixed(0)}°`;
+  const k = Number((t / Math.PI).toFixed(3));
+  if (k === 0) return "0";
+  if (k === 1) return "π";
+  return `${k}π`;
 }
-
